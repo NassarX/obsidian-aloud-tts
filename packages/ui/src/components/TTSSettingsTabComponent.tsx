@@ -30,7 +30,6 @@ import { MinimaxSettings } from "./settings/providers/provider-minimax";
 import { InworldSettings } from "./settings/providers/provider-inworld";
 import { PollySettings } from "./settings/providers/provider-polly";
 import { FishSettings } from "./settings/providers/provider-fish";
-import { ChatterboxSettings } from "./settings/providers/provider-chatterbox";
 
 const providerSettingsViews: Record<
   ModelProvider,
@@ -46,7 +45,6 @@ const providerSettingsViews: Record<
   openai: OpenAISettings,
   openaicompat: OpenAICompatibleSettings,
   polly: PollySettings,
-  chatterbox: ChatterboxSettings,
 };
 
 export const TTSSettingsTabComponent: React.FC<{
@@ -156,10 +154,6 @@ const ErrorInfoView: React.FC<{
 
 const providerGroups = [
   {
-    label: "Local",
-    providers: ["chatterbox"] as ModelProvider[],
-  },
-  {
     label: "Cloud",
     providers: [
       "openai",
@@ -184,7 +178,6 @@ const providerGroups = [
 const labels: Record<ModelProvider, string> = {
   openai: "OpenAI",
   openaicompat: "OpenAI Compatible",
-  chatterbox: "Chatterbox · voice clone (local)",
   azure: "Azure Speech Services",
   elevenlabs: "ElevenLabs · voice clone",
   gemini: "Google Gemini",

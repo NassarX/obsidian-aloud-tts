@@ -34,23 +34,7 @@ export type TTSPluginSettings = {
   MinimaxModelConfig &
   FishModelConfig &
   InworldModelConfig &
-  PollyModelConfig &
-  ChatterboxModelConfig);
-
-export interface ChatterboxModelConfig {
-  /** the API base URL to use */
-  chatterbox_apiBase: string;
-  /** the voice to use */
-  chatterbox_ttsVoice: string;
-  /** exaggeration parameter (0-1) */
-  chatterbox_exaggeration: number;
-  /** CFG weight parameter */
-  chatterbox_cfgWeight: number;
-  /** temperature parameter */
-  chatterbox_temperature: number;
-  /** whether to use batch mode */
-  chatterbox_batchMode: boolean;
-}
+  PollyModelConfig);
 
 export interface InworldModelConfig {
   /** the API key to use */
@@ -229,7 +213,6 @@ export function voiceHash(options: TTSModelOptions): string {
 export const modelProviders = [
   "openai",
   "openaicompat",
-  "chatterbox",
   "azure",
   "elevenlabs",
   "gemini",
@@ -251,13 +234,6 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   showEditorActionButton: true,
   autoScrollPlayerView: true,
   docSwitchBehavior: "continue",
-  // chatterbox
-  chatterbox_apiBase: "http://localhost:4123",
-  chatterbox_ttsVoice: "alloy",
-  chatterbox_exaggeration: 0.45,
-  chatterbox_cfgWeight: 0.65,
-  chatterbox_temperature: 1.0,
-  chatterbox_batchMode: true,
   // gemini
   gemini_apiKey: "",
   gemini_ttsModel: "gemini-2.5-flash-preview-tts",
@@ -427,7 +403,7 @@ const parsePluginSettings = (toParse: unknown): TTSPluginSettings => {
   }
   // Guard against removed providers surviving in persisted settings
   if (!modelProviders.includes(data.modelProvider)) {
-    data = { ...data, modelProvider: "chatterbox" };
+    data = { ...data, modelProvider: "openai" };
   }
   return data;
 };

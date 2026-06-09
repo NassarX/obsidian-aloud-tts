@@ -28,8 +28,8 @@ vi.mock("open-tts", () => ({
   REGISTRY: {
     openai: {},
   },
+  createFishModel: vi.fn(() => ({})),
   modelProviders: [
-    "chatterbox",
     "gemini",
     "fish",
     "minimax",

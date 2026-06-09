@@ -10,7 +10,6 @@ import {
 } from "./provider-costs";
 
 const DISPLAY_NAMES: Record<ModelProvider, string> = {
-  chatterbox: "Chatterbox",
   gemini: "Gemini",
   fish: "Fish Audio",
   minimax: "MiniMax",
