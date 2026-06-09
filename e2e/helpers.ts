@@ -31,7 +31,7 @@ export type ModelProvider =
 
 export const MODEL_PROVIDER_LABELS: Record<ModelProvider, string> = {
   openai: "OpenAI",
-  openaicompat: "OpenAI Compatible (Advanced)",
+  openaicompat: "OpenAI Compatible",
   azure: "Azure Speech Services",
   elevenlabs: "ElevenLabs",
   gemini: "Google Gemini",
