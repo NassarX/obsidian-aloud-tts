@@ -176,23 +176,6 @@ describe("pluginSettingsStore", () => {
     expect(store.settings.docSwitchBehavior).toBe("continue");
   });
 
-  it("backfills Chatterbox fields with defaults when upgrading from pre-chatterbox v2 settings", async () => {
-    const oldV2 = {
-      version: 2,
-      modelProvider: "openai",
-      openai_apiKey: "key",
-    };
-    const loadData = async () => oldV2;
-    const store = await pluginSettingsStore(loadData, async () => {});
-
-    expect(store.settings.chatterbox_apiBase).toBe("http://localhost:4123");
-    expect(store.settings.chatterbox_exaggeration).toBe(0.45);
-    expect(store.settings.chatterbox_cfgWeight).toBe(0.65);
-    expect(store.settings.chatterbox_temperature).toBe(1.0);
-    expect(store.settings.chatterbox_batchMode).toBe(true);
-    expect(store.settings.audioFolder).toBe("_audio");
-  });
-
   it("backfills Fish batch-mode fields with defaults when upgrading", async () => {
     const oldV2 = { version: 2, modelProvider: "fish", fish_apiKey: "key" };
     const loadData = async () => oldV2;
@@ -228,7 +211,7 @@ describe("pluginSettingsStore", () => {
     expect(store.settings.audioFolder).toBe("my-custom-audio");
   });
 
-  it("falls back to chatterbox when a removed provider appears in persisted settings", async () => {
+  it("falls back to openai when a removed provider appears in persisted settings", async () => {
     const dataWithRemovedProvider = {
       version: 2,
       modelProvider: "xtts", // removed provider
@@ -236,7 +219,7 @@ describe("pluginSettingsStore", () => {
     const loadData = async () => dataWithRemovedProvider;
     const store = await pluginSettingsStore(loadData, async () => {});
 
-    expect(store.settings.modelProvider).toBe("chatterbox");
+    expect(store.settings.modelProvider).toBe("openai");
   });
 
   it("preserves docSwitchBehavior when already set", async () => {

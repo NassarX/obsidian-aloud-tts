@@ -287,17 +287,6 @@ export default class TTSPlugin extends Plugin {
     this.addSettingTab(
       new TTSSettingTab(this.app, this, this.settings, this.player),
     );
-
-    // Health check for Chatterbox
-    if (this.settings.settings.modelProvider === "chatterbox") {
-      REGISTRY.chatterbox
-        .validateConnection(this.settings.settings)
-        .then((error) => {
-          if (error) {
-            new Notice(error, 0); // Persistent notice
-          }
-        });
-    }
   }
 
   onunload() {

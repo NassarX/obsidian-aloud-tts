@@ -33,14 +33,6 @@ export interface ProviderCost {
  *   Inworld     inworld.ai/pricing
  */
 export const PROVIDER_COSTS: Record<ModelProvider, ProviderCost> = {
-  chatterbox: {
-    pricePer1MChars: 0,
-    freeLabel: "Free",
-    tier: "free",
-    voiceClone: true,
-    batchMode: true,
-    note: "Local compute only",
-  },
   gemini: {
     pricePer1MChars: 0,
     freeLabel: "Free",

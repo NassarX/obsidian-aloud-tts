@@ -573,12 +573,6 @@ interface BatchConfig {
 
 /** Returns batch config if the current provider has batch mode enabled, otherwise null. */
 function resolveBatchConfig(settings: TTSPluginSettings): BatchConfig | null {
-  if (
-    settings.modelProvider === "chatterbox" &&
-    settings.chatterbox_batchMode
-  ) {
-    return { audioFolder: settings.audioFolder };
-  }
   if (settings.modelProvider === "fish" && settings.fish_batchMode) {
     return { audioFolder: settings.audioFolder };
   }
