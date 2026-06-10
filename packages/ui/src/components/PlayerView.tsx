@@ -72,13 +72,17 @@ export const PlayerView = observer(
     if (isMobile || (!visible && !exportInProgress)) {
       return null;
     }
+    const hasActive = !!player.activeText;
+
     return (
       <div className="tts-toolbar-player">
-        {visible && (
+        {/* Play selection — only show when no track is active so it doesn't
+            compete visually with the transport controls */}
+        {visible && !hasActive && (
           <div className="tts-toolbar-player-button-group">
             <IconButton
               icon="play"
-              tooltip="Play selection"
+              tooltip="Play from cursor"
               onClick={() => actions.playSelection()}
             />
           </div>
@@ -95,9 +99,7 @@ export const PlayerView = observer(
             <IconButton
               icon={player.autoScrollEnabled ? "eye" : "eye-off"}
               tooltip={
-                player.autoScrollEnabled
-                  ? "Autoscroll enabled (click to disable)"
-                  : "Autoscroll disabled (click to enable and scroll to current position)"
+                player.autoScrollEnabled ? "Autoscroll on" : "Autoscroll off"
               }
               onClick={() => actions.toggleAutoscroll()}
               highlight={player.autoScrollEnabled}
@@ -353,6 +355,36 @@ export const PlaybackTransportControls = observer(
   },
 );
 
+/** Shows "sentence X / Y" and a short snippet of the current sentence. */
+const TrackProgress: React.FC<{
+  active: {
+    position?: number;
+    audio: { chunks?: { rawText?: string }[] };
+    currentChunk?: { rawText?: string } | null;
+  };
+  paused?: boolean;
+}> = ({ active, paused }) => {
+  const total = active.audio.chunks?.length ?? 0;
+  const pos = Math.max(0, active.position ?? 0) + 1;
+  const snippet = active.currentChunk?.rawText?.trim().slice(0, 50);
+  const ellipsis =
+    (active.currentChunk?.rawText?.trim().length ?? 0) > 50 ? "…" : "";
+  return (
+    <span className="tts-track-progress">
+      {paused && <span className="tts-track-paused-icon">⏸</span>}
+      <span className="tts-track-counter">
+        {pos} / {total}
+      </span>
+      {snippet && (
+        <span className="tts-track-snippet">
+          {snippet}
+          {ellipsis}
+        </span>
+      )}
+    </span>
+  );
+};
+
 export const AudioStatusInfoContents: React.FC<{
   audioElement?: HTMLAudioElement;
   player: AudioStore;
@@ -364,7 +396,6 @@ export const AudioStatusInfoContents: React.FC<{
   }
   if (settings.apiKeyValid === false) {
     return (
-      // Extra span container to absorb the align-items: stretch from the container
       <span className="tts-audio-status-error">
         <AlertCircle className="tts-audio-status-error-icon" size={16} />{" "}
         <span className="tts-audio-status-error-text">
@@ -372,28 +403,52 @@ export const AudioStatusInfoContents: React.FC<{
         </span>
       </span>
     );
-  } else if (player.activeText?.error) {
-    return <TTSErrorInfoView error={player.activeText.error} />;
-  } else if (player.activeText?.isLoading) {
-    return <Spinner className="tts-audio-status-loading" delay={500} />;
-  } else if (
-    audioElement &&
-    player.activeText?.isPlaying &&
-    player.activeText.currentChunk?.decodedAudio &&
-    player.activeText.currentChunk.timelineStartSeconds != null
-  ) {
-    return (
-      <AudioVisualizer
-        audioElement={audioElement}
-        decodedAudio={player.activeText.currentChunk?.decodedAudio}
-        timelineStartSeconds={
-          player.activeText.currentChunk?.timelineStartSeconds
-        }
-      />
-    );
-  } else {
-    return null;
   }
+
+  const active = player.activeText;
+
+  if (active?.error) {
+    return <TTSErrorInfoView error={active.error} />;
+  }
+
+  if (active?.isLoading) {
+    return (
+      <span className="tts-audio-status-info">
+        <Spinner className="tts-audio-status-loading" delay={300} />
+        <TrackProgress active={active} />
+      </span>
+    );
+  }
+
+  const canVisualise =
+    audioElement &&
+    active?.isPlaying &&
+    active.currentChunk?.decodedAudio &&
+    active.currentChunk.timelineStartSeconds != null;
+
+  if (canVisualise) {
+    return (
+      <span className="tts-audio-status-info">
+        <AudioVisualizer
+          audioElement={audioElement!}
+          decodedAudio={active!.currentChunk!.decodedAudio!}
+          timelineStartSeconds={active!.currentChunk!.timelineStartSeconds!}
+        />
+        <TrackProgress active={active!} />
+      </span>
+    );
+  }
+
+  // Paused with an active track — show position so user knows where they are
+  if (active) {
+    return (
+      <span className="tts-audio-status-info tts-audio-status-paused">
+        <TrackProgress active={active} paused />
+      </span>
+    );
+  }
+
+  return null;
 });
 
 export function TTSErrorInfoView(props: {

@@ -1,8 +1,8 @@
 import { TTSCodeMirror } from "./TTSCodemirror";
 import { createPlayerSynchronizer } from "@open-tts/ui";
 
-import { MarkdownView, Plugin, addIcon } from "obsidian";
-import { REGISTRY } from "open-tts";
+import { MarkdownView, Notice, Plugin, addIcon, requestUrl } from "obsidian";
+import { REGISTRY, createFishModel, type FishHttpFetch } from "open-tts";
 import { TTSSettingTab } from "./components/TTSPluginSettingsTab";
 import { AudioSink } from "open-tts";
 import { WebAudioSink } from "open-tts/browser";
@@ -17,7 +17,13 @@ import {
 } from "open-tts";
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
-import { AudioTextContext, TTSModel, TTSModelOptions } from "open-tts";
+import {
+  AudioTextContext,
+  TTSErrorInfo,
+  TTSModel,
+  TTSModelOptions,
+} from "open-tts";
+import * as mobx from "mobx";
 import { TTSEditorAction } from "./TTSEditorAction";
 import { DetachedPlayerHost } from "./components/DetachedPlayer";
 
@@ -37,6 +43,7 @@ export default class TTSPlugin extends Plugin {
   editorAction: TTSEditorAction | undefined;
   detachedPlayerHost: DetachedPlayerHost | undefined;
   private _playerSyncDisposer: (() => void) | undefined;
+  private _errorNoticeDisposer: (() => void) | undefined;
 
   get player(): AudioStore {
     return this.system.audioStore;
@@ -59,6 +66,7 @@ export default class TTSPlugin extends Plugin {
             .onClick(async () => {
               await this.bridge.triggerSelection(view.file, editor, {
                 extendShort: true,
+                forceRestart: true,
               });
             });
         });
@@ -250,6 +258,21 @@ export default class TTSPlugin extends Plugin {
       this.player,
       this.bridge,
     );
+
+    // Show a Notice whenever the active track enters an error state so the
+    // user gets a clear signal even if they're not looking at the toolbar.
+    let lastErrorNoticeTime = 0;
+    this._errorNoticeDisposer = mobx.reaction(
+      () => this.player.activeText?.error,
+      (error) => {
+        if (!error) return;
+        // Debounce to at most 1 notice every 5 s (multiple chunks can fail).
+        const now = Date.now();
+        if (now - lastErrorNoticeTime < 5_000) return;
+        lastErrorNoticeTime = now;
+        new Notice(formatTTSError(error), 8000);
+      },
+    );
     this.registerEditorExtension(
       TTSCodeMirror(this.player, this.settings, this.audio, this.bridge),
     );
@@ -264,6 +287,7 @@ export default class TTSPlugin extends Plugin {
     this.detachedPlayerHost?.destroy();
     this.editorAction?.destroy();
     this._playerSyncDisposer?.();
+    this._errorNoticeDisposer?.();
     this.player?.destroy();
     this.audio?.destroy();
     this.bridge?.destroy();
@@ -294,9 +318,28 @@ export default class TTSPlugin extends Plugin {
   }
 }
 
+// requestUrl bypasses Electron's CORS restrictions in Obsidian's renderer.
+// Fish Audio's /v1/tts endpoint lacks CORS headers, blocking the default fetch.
+const obsidianFishFetch: FishHttpFetch = ({
+  url,
+  method = "GET",
+  headers,
+  body,
+}) =>
+  requestUrl({ url, method, headers, body, throw: false }).then((r) => ({
+    status: r.status,
+    arrayBuffer: r.arrayBuffer,
+    json: r.json as unknown,
+  }));
+
+const OBSIDIAN_REGISTRY = {
+  ...REGISTRY,
+  fish: createFishModel(obsidianFishFetch),
+};
+
 function ProxiedTTSModel(settings: TTSPluginSettings): TTSModel {
   const getModel = () => {
-    return REGISTRY[settings.modelProvider];
+    return OBSIDIAN_REGISTRY[settings.modelProvider];
   };
   return {
     call: (
@@ -315,4 +358,21 @@ function ProxiedTTSModel(settings: TTSPluginSettings): TTSModel {
       return getModel().convertToOptions(settings);
     },
   };
+}
+
+function formatTTSError(error: TTSErrorInfo): string {
+  const detail = error.ttsJsonMessage() ?? error.message;
+  if (error.httpErrorCode === 429) {
+    return `Aloud: Rate limited — waiting before retrying. (${detail})`;
+  }
+  if (error.httpErrorCode === 401 || error.httpErrorCode === 403) {
+    return `Aloud: API key error — ${detail}. Check plugin settings.`;
+  }
+  if (error.httpErrorCode === 404) {
+    return `Aloud: Model not found — ${detail}. Check the model name in settings.`;
+  }
+  if (error.httpErrorCode && error.httpErrorCode >= 500) {
+    return `Aloud: Server error (${error.httpErrorCode}) — ${detail}`;
+  }
+  return `Aloud: Audio generation failed — ${detail}`;
 }

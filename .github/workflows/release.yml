@@ -50,8 +50,11 @@ jobs:
             tag="${GITHUB_REF#refs/tags/}"
           fi
 
+          # Delete existing release/tag if it exists (idempotent for re-runs)
+          gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+
           # Check if this is a pre-release version
-          if echo "$tag" | grep -qE -- '-(rc|alpha|beta)'; then
+          if echo "$tag" | grep -qE -- '-(rc|alpha|beta|ci)'; then
             # Pre-release version
             gh release create "$tag" \
               --title="$tag" \
